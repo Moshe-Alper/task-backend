@@ -86,8 +86,10 @@ async function add(task) {
 }
 
 async function update(task) {
-    const taskToSave = { title: task.title, importance: task.importance }
-
+    const taskToSave = { 
+		title: task.title, 
+		importance: task.importance 	
+	}
     try {
         const criteria = { _id: ObjectId.createFromHexString(task._id) }
 
