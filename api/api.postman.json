@@ -147,7 +147,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"vendor\": \"Subali\",\n    \"speed\": 100,\n    \"price\": 1000\n}",
+							"raw": "{\n    \"title\": \"Subali\",\n    \"importance\": 100,\n ",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -176,7 +176,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"vendor\": \"Subali\",\n    \"speed\": 100,\n    \"price\": 800,\n    \"_id\": \"669145477ed386ad1a905074\"\n}",
+							"raw": "{\n    \"title\": \"Subali\",\n    \"importance\": 100,\n  \"_id\": \"669145477ed386ad1a905074\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"

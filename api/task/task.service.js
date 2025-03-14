@@ -86,7 +86,7 @@ async function add(task) {
 }
 
 async function update(task) {
-    const taskToSave = { vendor: task.vendor, speed: task.speed }
+    const taskToSave = { title: task.title, importance: task.importance }
 
     try {
         const criteria = { _id: ObjectId.createFromHexString(task._id) }
@@ -131,11 +131,16 @@ async function removeTaskMsg(taskId, msgId) {
 }
 
 function _buildCriteria(filterBy) {
-    const criteria = {
-        vendor: { $regex: filterBy.txt, $options: 'i' },
-        speed: { $gte: filterBy.minSpeed },
+    const criteria = {}
+    
+    if (filterBy.txt !== undefined) {
+        criteria.title = { $regex: filterBy.txt, $options: 'i' }
     }
-
+    
+    if (filterBy.minImportance !== undefined) {
+        criteria.importance = { $gte: filterBy.minImportance }
+    }
+    
     return criteria
 }
 

@@ -5,7 +5,7 @@ export async function getTasks(req, res) {
 	try {
 		const filterBy = {
 			txt: req.query.txt || '',
-			minSpeed: +req.query.minSpeed || 0,
+			importance: +req.query.minImportance || 0,
             sortField: req.query.sortField || '',
             sortDir: req.query.sortDir || 1,
 			pageIdx: req.query.pageIdx,
