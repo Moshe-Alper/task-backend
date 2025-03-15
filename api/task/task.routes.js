@@ -3,7 +3,7 @@ import express from 'express'
 import { requireAuth } from '../../middlewares/requireAuth.middleware.js'
 import { log } from '../../middlewares/logger.middleware.js'
 
-import { getTasks, getTaskById, addTask, updateTask, removeTask, addTaskMsg, removeTaskMsg } from './task.controller.js'
+import { getTasks, getTaskById, addTask, updateTask, removeTask, startTask, addTaskMsg, removeTaskMsg } from './task.controller.js'
 
 const router = express.Router()
 
@@ -17,7 +17,7 @@ router.put('/:id', requireAuth, updateTask)
 router.delete('/:id', requireAuth, removeTask)
 // router.delete('/:id', requireAuth, requireAdmin, removeTask)
 
-// router.post('/:id/start', requireAuth, startTask)
+router.post('/:id/start', requireAuth, startTask)
 
 router.post('/:id/msg', requireAuth, addTaskMsg)
 router.delete('/:id/msg/:msgId', requireAuth, removeTaskMsg)

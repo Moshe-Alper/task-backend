@@ -4,6 +4,7 @@ import { logger } from '../../services/logger.service.js'
 import { makeId } from '../../services/util.service.js'
 import { dbService } from '../../services/db.service.js'
 import { asyncLocalStorage } from '../../services/als.service.js'
+import { externalService } from '../../services/external.service.js'
 
 const PAGE_SIZE = 3
 
@@ -13,6 +14,7 @@ export const taskService = {
 	getById,
 	add,
 	update,
+	performTask,
 	addTaskMsg,
 	removeTaskMsg,
 }
@@ -87,14 +89,22 @@ async function add(task) {
 
 async function update(task) {
     const taskToSave = { 
-		title: task.title, 
-		description: task, description,
-		importance: task.importance
+        title: task.title,  
+        importance: task.importance,
+        status: task.status,
+        doneAt: task.doneAt,
+        result: task.result,
+        lastTriedAt: task.lastTriedAt,
+        triesCount: task.triesCount,
+        errors: task.errors || []
 	}
 	//remove later - frontend
     try {
-        const criteria = { _id: ObjectId.createFromHexString(task._id) }
-
+        const taskId = typeof task._id === 'string' 
+            ? ObjectId.createFromHexString(task._id) 
+            : task._id;
+            
+        const criteria = { _id: taskId }
 		// const taskToSave = { ...task }
         
         // delete taskToSave._id
@@ -109,6 +119,27 @@ async function update(task) {
 	} catch (err) {
 		logger.error(`cannot update task ${task._id}`, err)
 		throw err
+	}
+}
+
+async function performTask(task) {
+	try {
+		task.status = 'running'
+		await update(task)
+
+		const result = await externalService.execute(task)
+		task.status = 'done'
+		task.doneAt = Date.now()
+		task.result = result
+	} catch (error) {
+		task.status = 'failed'
+		task.errors.push(error.toString())
+	} finally {
+		task.lastTriedAt = Date.now()
+		task.triesCount = (task.triesCount || 0) + 1
+
+		await update(task)
+		return task
 	}
 }
 

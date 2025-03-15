@@ -82,6 +82,23 @@ export async function removeTask(req, res) {
 	}
 }
 
+export async function startTask(req, res) {
+	try {
+		const taskId = req.params.id
+		const task = await taskService.getById(taskId)
+
+		if (!task) {
+			return res.status(404).send({ err: 'Task not found' })
+		}
+
+		const updatedTask = await taskService.performTask(task)
+		res.json(updatedTask)
+	} catch (err) {
+		logger.error('Failed to start task', err)
+		res.status(500).send({ err: `Failed to start task: ${err.message || err}` })
+	}
+}
+
 export async function addTaskMsg(req, res) {
 	const { loggedinUser } = req
 
