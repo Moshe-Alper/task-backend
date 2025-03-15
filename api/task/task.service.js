@@ -88,10 +88,19 @@ async function add(task) {
 async function update(task) {
     const taskToSave = { 
 		title: task.title, 
-		importance: task.importance 	
+		description: task, description,
+		importance: task.importance
 	}
+	//remove later - frontend
     try {
         const criteria = { _id: ObjectId.createFromHexString(task._id) }
+
+		// const taskToSave = { ...task }
+        
+        // delete taskToSave._id
+        // delete taskToSave.owner
+        // delete taskToSave.createdAt
+		// return when moving to frontend
 
 		const collection = await dbService.getCollection('task')
 		await collection.updateOne(criteria, { $set: taskToSave })

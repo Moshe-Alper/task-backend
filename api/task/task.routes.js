@@ -17,6 +17,8 @@ router.put('/:id', requireAuth, updateTask)
 router.delete('/:id', requireAuth, removeTask)
 // router.delete('/:id', requireAuth, requireAdmin, removeTask)
 
+// router.post('/:id/start', requireAuth, startTask)
+
 router.post('/:id/msg', requireAuth, addTaskMsg)
 router.delete('/:id/msg/:msgId', requireAuth, removeTaskMsg)
 
