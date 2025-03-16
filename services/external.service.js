@@ -1,16 +1,20 @@
 export const externalService = {
-    execute
-  }
+  execute
+}
 
 function execute(task) {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (Math.random() > 0.5) {
-          resolve(parseInt(Math.random() * 100))
-          // TODO: throw some more random errors
-        } else {
-          reject('High Temperature')
-        }
-      }, 5000)
-    })
-  }
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (Math.random() > 0.5) {
+        resolve(parseInt(Math.random() * 100))
+      } else {
+        reject(_getRandomError())
+      }
+    }, 5000)
+  })
+}
+
+function _getRandomError() {
+  const errors = ['High Temperature', 'Low Battery', 'Network Failure', 'Overload Detected', 'Unexpected Shutdown'];
+  return errors[Math.floor(Math.random() * errors.length)];
+}

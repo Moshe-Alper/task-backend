@@ -7,6 +7,7 @@ import { asyncLocalStorage } from '../../services/als.service.js'
 import { externalService } from '../../services/external.service.js'
 
 const PAGE_SIZE = 3
+let isWorkerOn = false
 
 export const taskService = {
 	remove,
@@ -14,15 +15,21 @@ export const taskService = {
 	getById,
 	add,
 	update,
+
 	performTask,
+	getNextTask,
+
+	toggleWorker,
+	getWorkerStatus,
+
 	addTaskMsg,
 	removeTaskMsg,
 }
 
 async function query(filterBy = { txt: '' }) {
 	try {
-        const criteria = _buildCriteria(filterBy)
-        const sort = _buildSort(filterBy)
+		const criteria = _buildCriteria(filterBy)
+		const sort = _buildSort(filterBy)
 
 		const collection = await dbService.getCollection('task')
 		var taskCursor = await collection.find(criteria, { sort })
@@ -41,11 +48,11 @@ async function query(filterBy = { txt: '' }) {
 
 async function getById(taskId) {
 	try {
-        const criteria = { _id: ObjectId.createFromHexString(taskId) }
+		const criteria = { _id: ObjectId.createFromHexString(taskId) }
 
 		const collection = await dbService.getCollection('task')
 		const task = await collection.findOne(criteria)
-        
+
 		task.createdAt = task._id.getTimestamp()
 		return task
 	} catch (err) {
@@ -55,19 +62,19 @@ async function getById(taskId) {
 }
 
 async function remove(taskId) {
-    const { loggedinUser } = asyncLocalStorage.getStore()
-    const { _id: ownerId, isAdmin } = loggedinUser
+	const { loggedinUser } = asyncLocalStorage.getStore()
+	const { _id: ownerId, isAdmin } = loggedinUser
 
 	try {
-        const criteria = { 
-            _id: ObjectId.createFromHexString(taskId), 
-        }
-        if(!isAdmin) criteria['owner._id'] = ownerId
-        
+		const criteria = {
+			_id: ObjectId.createFromHexString(taskId),
+		}
+		if (!isAdmin) criteria['owner._id'] = ownerId
+
 		const collection = await dbService.getCollection('task')
 		const res = await collection.deleteOne(criteria)
 
-        if(res.deletedCount === 0) throw('Not your task')
+		if (res.deletedCount === 0) throw ('Not your task')
 		return taskId
 	} catch (err) {
 		logger.error(`cannot remove task ${taskId}`, err)
@@ -88,28 +95,28 @@ async function add(task) {
 }
 
 async function update(task) {
-    const taskToSave = { 
-        title: task.title,  
-        importance: task.importance,
-        status: task.status,
-        doneAt: task.doneAt,
-        result: task.result,
-        lastTriedAt: task.lastTriedAt,
-        triesCount: task.triesCount,
-        errors: task.errors || []
+	const taskToSave = {
+		title: task.title,
+		importance: task.importance,
+		status: task.status,
+		doneAt: task.doneAt,
+		result: task.result,
+		lastTriedAt: task.lastTriedAt,
+		triesCount: task.triesCount,
+		errors: task.errors || []
 	}
 	//remove later - frontend
-    try {
-        const taskId = typeof task._id === 'string' 
-            ? ObjectId.createFromHexString(task._id) 
-            : task._id;
-            
-        const criteria = { _id: taskId }
+	try {
+		const taskId = typeof task._id === 'string'
+			? ObjectId.createFromHexString(task._id)
+			: task._id
+
+		const criteria = { _id: taskId }
 		// const taskToSave = { ...task }
-        
-        // delete taskToSave._id
-        // delete taskToSave.owner
-        // delete taskToSave.createdAt
+
+		// delete taskToSave._id
+		// delete taskToSave.owner
+		// delete taskToSave.createdAt
 		// return when moving to frontend
 
 		const collection = await dbService.getCollection('task')
@@ -143,11 +150,61 @@ async function performTask(task) {
 	}
 }
 
+async function getNextTask() {
+	try {
+		const collection = await dbService.getCollection('task')
+
+		const task = await collection.findOneAndUpdate(
+			{ status: { $in: ['new', 'fail'] } }, // Get tasks that need execution
+			{ $set: { status: 'running', lastTriedAt: Date.now() }, $inc: { triesCount: 1 } }, // Mark as running
+			{ returnDocument: 'after', sort: { importance: -1, createdAt: 1 } } // Prioritize highest importance, then oldest first
+		)
+
+		return task.value
+	} catch (err) {
+		logger.error('Failed to get next task', err)
+		throw err
+	}
+}
+
+async function runWorker() {
+	if (!isWorkerOn) return
+	var delay = 5000
+	try {
+		const task = await getNextTask()
+		if (task) {
+			try {
+				await performTask(task)
+			} catch (err) {
+				console.log(`Failed Task`, err)
+			} finally {
+				delay = 1
+			}
+		} else {
+			console.log('Snoozing... no tasks to perform')
+		}
+	} catch (err) {
+		console.log(`Failed getting next task to execute`, err)
+	} finally {
+		setTimeout(runWorker, delay)
+	}
+}
+
+function toggleWorker() {
+	isWorkerOn = !isWorkerOn
+	if (isWorkerOn) runWorker()
+	return isWorkerOn
+}
+
+function getWorkerStatus() {
+	return isWorkerOn
+}
+
 async function addTaskMsg(taskId, msg) {
 	try {
-        const criteria = { _id: ObjectId.createFromHexString(taskId) }
-        msg.id = makeId()
-        
+		const criteria = { _id: ObjectId.createFromHexString(taskId) }
+		msg.id = makeId()
+
 		const collection = await dbService.getCollection('task')
 		await collection.updateOne(criteria, { $push: { msgs: msg } })
 
@@ -160,11 +217,11 @@ async function addTaskMsg(taskId, msg) {
 
 async function removeTaskMsg(taskId, msgId) {
 	try {
-        const criteria = { _id: ObjectId.createFromHexString(taskId) }
+		const criteria = { _id: ObjectId.createFromHexString(taskId) }
 
 		const collection = await dbService.getCollection('task')
-		await collection.updateOne(criteria, { $pull: { msgs: { id: msgId }}})
-        
+		await collection.updateOne(criteria, { $pull: { msgs: { id: msgId } } })
+
 		return msgId
 	} catch (err) {
 		logger.error(`cannot add task msg ${taskId}`, err)
@@ -173,20 +230,20 @@ async function removeTaskMsg(taskId, msgId) {
 }
 
 function _buildCriteria(filterBy) {
-    const criteria = {}
-    
-    if (filterBy.txt !== undefined) {
-        criteria.title = { $regex: filterBy.txt, $options: 'i' }
-    }
-    
-    if (filterBy.minImportance !== undefined) {
-        criteria.importance = { $gte: filterBy.minImportance }
-    }
-    
-    return criteria
+	const criteria = {}
+
+	if (filterBy.txt !== undefined) {
+		criteria.title = { $regex: filterBy.txt, $options: 'i' }
+	}
+
+	if (filterBy.minImportance !== undefined) {
+		criteria.importance = { $gte: filterBy.minImportance }
+	}
+
+	return criteria
 }
 
 function _buildSort(filterBy) {
-    if(!filterBy.sortField) return {}
-    return { [filterBy.sortField]: filterBy.sortDir }
+	if (!filterBy.sortField) return {}
+	return { [filterBy.sortField]: filterBy.sortDir }
 }

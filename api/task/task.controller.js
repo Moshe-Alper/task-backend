@@ -7,8 +7,8 @@ export async function getTasks(req, res) {
 		const filterBy = {
 			txt: req.query.txt || '',
 			importance: +req.query.minImportance || 0,
-            sortField: req.query.sortField || '',
-            sortDir: req.query.sortDir || 1,
+			sortField: req.query.sortField || '',
+			sortDir: req.query.sortDir || 1,
 			pageIdx: req.query.pageIdx,
 		}
 		const tasks = await taskService.query(filterBy)
@@ -55,11 +55,11 @@ export async function addTask(req, res) {
 
 export async function updateTask(req, res) {
 	const { loggedinUser, body: task } = req
-    const { _id: userId, isAdmin } = loggedinUser
-    if(!isAdmin && task.owner._id !== userId) {
-        res.status(403).send('Not your task...')
-        return
-    }
+	const { _id: userId, isAdmin } = loggedinUser
+	if (!isAdmin && task.owner._id !== userId) {
+		res.status(403).send('Not your task...')
+		return
+	}
 
 	try {
 		const updatedTask = await taskService.update(task)
@@ -97,6 +97,31 @@ export async function startTask(req, res) {
 		logger.error('Failed to start task', err)
 		res.status(500).send({ err: `Failed to start task: ${err.message || err}` })
 	}
+}
+
+export async function toggleWorker(req, res) {
+    try {
+        const isWorkerOn = taskService.toggleWorker()
+        
+        if (isWorkerOn) {
+            res.json({ isWorkerOn: true, msg: 'Worker started' })
+        } else {
+            res.json({ isWorkerOn: false, msg: 'Worker stopped' })
+        }
+    } catch (err) {
+        logger.error('Failed to toggle worker', err)
+        res.status(500).send({ err: 'Failed to toggle worker' })
+    }
+}
+
+export async function getWorkerStatus(req, res) {
+    try {
+        const isOn = taskService.getWorkerStatus()
+        res.json({ isWorkerOn: isOn })
+    } catch (err) {
+        logger.error('Failed to get worker status', err)
+        res.status(500).send({ err: 'Failed to get worker status' })
+    }
 }
 
 export async function addTaskMsg(req, res) {
