@@ -99,29 +99,53 @@ export async function startTask(req, res) {
 	}
 }
 
-export async function toggleWorker(req, res) {
-    try {
-        const isWorkerOn = taskService.toggleWorker()
-        
-        if (isWorkerOn) {
-            res.json({ isWorkerOn: true, msg: 'Worker started' })
-        } else {
-            res.json({ isWorkerOn: false, msg: 'Worker stopped' })
-        }
-    } catch (err) {
-        logger.error('Failed to toggle worker', err)
-        res.status(500).send({ err: 'Failed to toggle worker' })
-    }
+export async function runWorker() {
+	if (!taskService.getWorkerStatus()) return
+	var delay = 5000
+	try {
+		const task = await taskService.getNextTask()
+		if (task) {
+			try {
+				await taskService.performTask(task)
+			} catch (err) {
+				console.log(`Failed Task`, err)
+			} finally {
+				delay = 1
+			}
+		} else {
+			console.log('Snoozing... no tasks to perform')
+		}
+	} catch (err) {
+		console.log(`Failed getting next task to execute`, err)
+	} finally {
+		setTimeout(runWorker, delay)
+	}
 }
 
+export async function toggleWorker(req, res) {
+	try {
+		const isWorkerOn = taskService.setWorkerState(runWorker)
+
+		if (isWorkerOn) {
+			res.json({ isWorkerOn: true, msg: 'Worker started' })
+		} else {
+			res.json({ isWorkerOn: false, msg: 'Worker stopped' })
+		}
+	} catch (err) {
+		logger.error('Failed to toggle worker', err)
+		res.status(500).send({ err: 'Failed to toggle worker' })
+	}
+}
+
+
 export async function getWorkerStatus(req, res) {
-    try {
-        const isOn = taskService.getWorkerStatus()
-        res.json({ isWorkerOn: isOn })
-    } catch (err) {
-        logger.error('Failed to get worker status', err)
-        res.status(500).send({ err: 'Failed to get worker status' })
-    }
+	try {
+		const isOn = taskService.getWorkerStatus()
+		res.json({ isWorkerOn: isOn })
+	} catch (err) {
+		logger.error('Failed to get worker status', err)
+		res.status(500).send({ err: 'Failed to get worker status' })
+	}
 }
 
 export async function addTaskMsg(req, res) {

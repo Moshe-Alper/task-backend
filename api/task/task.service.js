@@ -19,7 +19,7 @@ export const taskService = {
 	performTask,
 	getNextTask,
 
-	toggleWorker,
+	setWorkerState,
 	getWorkerStatus,
 
 	addTaskMsg,
@@ -151,82 +151,39 @@ async function performTask(task) {
 }
 
 async function getNextTask() {
-    try {
-        const collection = await dbService.getCollection('task')
-
-        // Find tasks that:
-        // 1. Are in 'new' or 'fail' status
-        // 2. Have fewer than 5 tries (to avoid stuck tasks)
-        const task = await collection.findOne(
-            {
-                status: { $in: ['new', 'failed'] },  // Note: 'failed' not 'fail' to match your error handling
-                triesCount: { $lt: 5 }  // Prevent tasks with too many attempts
-            },
-            {
-                // Sort by:
-                // 1. Importance (highest first)
-                // 2. Tries count (lowest first) to prevent starvation
-                // 3. Creation time (oldest first) for fairness
-                sort: {
-                    importance: -1,
-                    triesCount: 1,
-                    createdAt: 1
-                }
-            }
-        )
-
-        return task
-    } catch (err) {
-        logger.error('Failed to get next task', err)
-        throw err
-    }
-}
-
-async function runWorker() {
-	if (!isWorkerOn) return
-	var delay = 5000
-	let task = null
-
 	try {
-		task = await getNextTask()
-		if (task) {
-			try {
-				await performTask(task)
-				delay = 1
-			} catch (err) {
-				console.log(`Failed Task`, err)
-				// Make sure the task status is updated even if performTask throws an error
-				if (task) {
-					task.status = 'failed'
-					task.errors.push(err.toString())
-					await update(task)
+		const collection = await dbService.getCollection('task')
+
+		// 2. Have fewer than 5 tries (to avoid stuck tasks)
+		const task = await collection.findOne(
+			{
+				status: { $in: ['new', 'failed'] },  // Finds task that are new or failed
+				triesCount: { $lt: 5 }  // Prevent tasks with too many attempts
+			},
+			{
+				// Sort by:
+				// 1. Importance (highest first)
+				// 2. Tries count (lowest first) to prevent starvation
+				// 3. Creation time (oldest first) for fairness
+				sort: {
+					importance: -1,
+					triesCount: 1,
+					createdAt: 1
 				}
-				delay = 1
 			}
-		} else {
-			console.log('Snoozing... no tasks to perform')
-		}
+		)
+
+		return task
 	} catch (err) {
-		console.log(`Failed getting next task to execute`, err)
-		// If we got a task but failed to process it, ensure it's not stuck
-		if (task) {
-			try {
-				task.status = 'failed'
-				task.errors.push('Worker error: ' + err.toString())
-				await update(task)
-			} catch (updateErr) {
-				console.log('Failed to update task status after error', updateErr)
-			}
-		}
-	} finally {
-		setTimeout(runWorker, delay)
+		logger.error('Failed to get next task', err)
+		throw err
 	}
 }
 
-function toggleWorker() {
-	isWorkerOn = !isWorkerOn
-	if (isWorkerOn) runWorker()
-	return isWorkerOn
+function setWorkerState(runWorkerCallback) {
+    isWorkerOn = !isWorkerOn
+    if (isWorkerOn && runWorkerCallback) runWorkerCallback()
+    return isWorkerOn
 }
 
 function getWorkerStatus() {
