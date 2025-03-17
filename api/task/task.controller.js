@@ -1,6 +1,8 @@
 import { logger } from '../../services/logger.service.js'
 import { getRandomInt } from '../../services/util.service.js'
 import { taskService } from './task.service.js'
+import { socketService } from '../../services/socket.service.js'
+
 
 export async function getTasks(req, res) {
 	try {
@@ -92,6 +94,10 @@ export async function startTask(req, res) {
 		}
 
 		const updatedTask = await taskService.performTask(task)
+
+		const { loggedinUser } = req
+		socketService.broadcast({ type: 'task-updated', data: updatedTask, userId: loggedinUser._id })
+
 		res.json(updatedTask)
 	} catch (err) {
 		logger.error('Failed to start task', err)
@@ -106,9 +112,11 @@ export async function runWorker() {
 		const task = await taskService.getNextTask()
 		if (task) {
 			try {
-				await taskService.performTask(task)
+				const updatedTask = await taskService.performTask(task)
+
+				socketService.broadcast({ type: 'task-updated', data: updatedTask })
 			} catch (err) {
-				console.log(`Failed Task`, err)
+				logger.error(`Failed Task`, err)
 			} finally {
 				delay = 1
 			}
@@ -116,7 +124,7 @@ export async function runWorker() {
 			console.log('Snoozing... no tasks to perform')
 		}
 	} catch (err) {
-		console.log(`Failed getting next task to execute`, err)
+		logger.error(`Failed getting next task to execute`, err)
 	} finally {
 		setTimeout(runWorker, delay)
 	}
@@ -140,7 +148,7 @@ export async function toggleWorker(req, res) {
 
 export async function getWorkerStatus(req, res) {
 	try {
-		const isOn = taskService.getWorkerStatus()
+		const isOn = taskService.isWorkerRunning()
 		res.json({ isWorkerOn: isOn })
 	} catch (err) {
 		logger.error('Failed to get worker status', err)

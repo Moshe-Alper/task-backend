@@ -43,6 +43,15 @@ export function setupSocketAPI(http) {
             delete socket.userId
         })
 
+        socket.on('task-watch', () => {
+            logger.info(`Socket is watching tasks [id: ${socket.id}]`)
+            socket.join('task-updates')
+        })
+        socket.on('task-stop-watch', () => {
+            logger.info(`Socket stopped watching tasks [id: ${socket.id}]`)
+            socket.leave('task-updates')
+        })
+
     })
 }
 

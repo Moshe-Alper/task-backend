@@ -20,7 +20,7 @@ export const taskService = {
 	getNextTask,
 
 	setWorkerState,
-	getWorkerStatus,
+	isWorkerRunning,
 
 	addTaskMsg,
 	removeTaskMsg,
@@ -186,7 +186,7 @@ function setWorkerState(runWorkerCallback) {
     return isWorkerOn
 }
 
-function getWorkerStatus() {
+function isWorkerRunning() {
 	return isWorkerOn
 }
 
