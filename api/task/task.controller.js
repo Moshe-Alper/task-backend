@@ -1,6 +1,7 @@
 import { logger } from '../../services/logger.service.js'
 import { getRandomInt } from '../../services/util.service.js'
 import { taskService } from './task.service.js'
+import { socketService } from '../../services/socket.service.js'
 
 export async function getTasks(req, res) {
 	try {
@@ -83,43 +84,50 @@ export async function removeTask(req, res) {
 }
 
 export async function startTask(req, res) {
-	try {
-		const taskId = req.params.id
-		const task = await taskService.getById(taskId)
+    try {
+        const taskId = req.params.id
+        const task = await taskService.getById(taskId)
 
-		if (!task) {
-			return res.status(404).send({ err: 'Task not found' })
-		}
+        if (!task) {
+            return res.status(404).send({ err: 'Task not found' })
+        }
 
-		const updatedTask = await taskService.performTask(task)
-		res.json(updatedTask)
-	} catch (err) {
-		logger.error('Failed to start task', err)
-		res.status(500).send({ err: `Failed to start task: ${err.message || err}` })
-	}
+        const updatedTask = await taskService.performTask(task)
+        
+        socketService.broadcast({ type: 'task-updated', data: updatedTask })
+        
+        res.json(updatedTask)
+    } catch (err) {
+        logger.error('Failed to start task', err)
+        res.status(500).send({ err: `Failed to start task: ${err.message || err}` })
+    }
 }
 
 export async function runWorker() {
-	if (!taskService.getWorkerStatus()) return
-	var delay = 5000
-	try {
-		const task = await taskService.getNextTask()
-		if (task) {
-			try {
-				await taskService.performTask(task)
-			} catch (err) {
-				console.log(`Failed Task`, err)
-			} finally {
-				delay = 1
-			}
-		} else {
-			console.log('Snoozing... no tasks to perform')
-		}
-	} catch (err) {
-		console.log(`Failed getting next task to execute`, err)
-	} finally {
-		setTimeout(runWorker, delay)
-	}
+    if (!taskService.isWorkerRunning()) return
+    var delay = 5000
+    try {
+        const task = await taskService.getNextTask()
+        if (task) {
+            try {
+                const updatedTask = await taskService.performTask(task)
+                
+                // Emit socket event when task is updated by worker
+                socketService.broadcast({ type: 'task-updated', data: updatedTask })
+                
+            } catch (err) {
+                logger.error(`Failed Task`, err)
+            } finally {
+                delay = 1
+            }
+        } else {
+            console.log('Snoozing... no tasks to perform')
+        }
+    } catch (err) {
+        logger.error(`Failed getting next task to execute`, err)
+    } finally {
+        setTimeout(runWorker, delay)
+    }
 }
 
 export async function toggleWorker(req, res) {
@@ -140,7 +148,7 @@ export async function toggleWorker(req, res) {
 
 export async function getWorkerStatus(req, res) {
 	try {
-		const isOn = taskService.getWorkerStatus()
+		const isOn = taskService.isWorkerRunning()
 		res.json({ isWorkerOn: isOn })
 	} catch (err) {
 		logger.error('Failed to get worker status', err)
