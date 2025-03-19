@@ -71,6 +71,7 @@ async function broadcast({ type, data, room = null, userId }) {
     if (userId) {
         userId = userId.toString()
       }    
+      
     logger.info(`Broadcasting event: ${type}`)
     const excludedSocket = await _getUserSocket(userId)
     if (room && excludedSocket) {

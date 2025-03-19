@@ -21,31 +21,40 @@ export const taskService = {
 
 	setWorkerState,
 	isWorkerRunning,
-
+	
 	addTaskMsg,
 	removeTaskMsg,
 }
 
 async function query(filterBy = { txt: '' }) {
 	try {
-		const criteria = _buildCriteria(filterBy)
-		const sort = _buildSort(filterBy)
+	  const criteria = _buildCriteria(filterBy)
+	  let sort = _buildSort(filterBy)
+	  let options = {}
+	  
 
-		const collection = await dbService.getCollection('task')
-		var taskCursor = await collection.find(criteria, { sort })
-
-		if (filterBy.pageIdx !== undefined) {
-			taskCursor.skip(filterBy.pageIdx * PAGE_SIZE).limit(PAGE_SIZE)
+	  if (filterBy.txt) {
+		options.projection = { score: { $meta: "textScore" } }
+		
+		if (!filterBy.sortField) {
+		  sort = { score: { $meta: "textScore" } }
 		}
-
-		const tasks = taskCursor.toArray()
-		return tasks
+	  }
+  
+	  const collection = await dbService.getCollection('task')
+	  var taskCursor = await collection.find(criteria, options).sort(sort)
+  
+	  if (filterBy.pageIdx !== undefined) {
+		taskCursor.skip(filterBy.pageIdx * PAGE_SIZE).limit(PAGE_SIZE)
+	  }
+  
+	  const tasks = taskCursor.toArray()
+	  return tasks
 	} catch (err) {
-		logger.error('cannot find tasks', err)
-		throw err
+	  logger.error('cannot find tasks', err)
+	  throw err
 	}
-}
-
+  }
 async function getById(taskId) {
 	try {
 		const criteria = { _id: ObjectId.createFromHexString(taskId) }
@@ -219,19 +228,19 @@ async function removeTaskMsg(taskId, msgId) {
 	}
 }
 
-function _buildCriteria(filterBy) {
+  function _buildCriteria(filterBy) {
 	const criteria = {}
-
-	if (filterBy.txt !== undefined) {
-		criteria.title = { $regex: filterBy.txt, $options: 'i' }
+  
+	if (filterBy.txt) {
+	  criteria.$text = { $search: filterBy.txt }
 	}
-
+  
 	if (filterBy.minImportance !== undefined) {
-		criteria.importance = { $gte: filterBy.minImportance }
+	  criteria.importance = { $gte: filterBy.minImportance }
 	}
-
+  
 	return criteria
-}
+  }
 
 function _buildSort(filterBy) {
 	if (!filterBy.sortField) return {}

@@ -9,6 +9,7 @@ import { userRoutes } from './api/user/user.routes.js'
 import { reviewRoutes } from './api/review/review.routes.js'
 import { taskRoutes } from './api/task/task.routes.js'
 import { setupSocketAPI } from './services/socket.service.js'
+import { dbService } from './services/db.service.js' 
 
 import { setupAsyncLocalStorage } from './middlewares/setupAls.middleware.js'
 
@@ -45,6 +46,10 @@ setupSocketAPI(server)
 // so when requesting http://localhost:3030/unhandled-route... 
 // it will still serve the index.html file
 // and allow vue/react-router to take it from there
+
+dbService.setupIndexes()
+    .then(() => console.log('Database indexes setup completed'))
+    .catch(err => console.error('Failed to setup database indexes:', err))
 
 app.get('/**', (req, res) => {
     res.sendFile(path.resolve('public/index.html'))
