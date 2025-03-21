@@ -23,9 +23,6 @@ export const taskService = {
 	isWorkerRunning,
 
 	clearAll,
-	
-	addTaskMsg,
-	removeTaskMsg,
 }
 
 async function query(filterBy = { txt: '' }) {
@@ -192,41 +189,12 @@ function isWorkerRunning() {
 	return isWorkerOn
 }
 
-async function addTaskMsg(taskId, msg) {
-	try {
-		const criteria = { _id: ObjectId.createFromHexString(taskId) }
-		msg.id = makeId()
-
-		const collection = await dbService.getCollection('task')
-		await collection.updateOne(criteria, { $push: { msgs: msg } })
-
-		return msg
-	} catch (err) {
-		logger.error(`cannot add task msg ${taskId}`, err)
-		throw err
-	}
-}
-
 async function clearAll() {
 	try {
 		const collection = await dbService.getCollection('task')
 		await collection.deleteMany({}) 
 	} catch (err) {
 		logger.error('Failed to clear tasks', err)
-		throw err
-	}
-}
-
-async function removeTaskMsg(taskId, msgId) {
-	try {
-		const criteria = { _id: ObjectId.createFromHexString(taskId) }
-
-		const collection = await dbService.getCollection('task')
-		await collection.updateOne(criteria, { $pull: { msgs: { id: msgId } } })
-
-		return msgId
-	} catch (err) {
-		logger.error(`cannot add task msg ${taskId}`, err)
 		throw err
 	}
 }

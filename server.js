@@ -4,8 +4,6 @@ import cors from 'cors'
 import express from 'express'
 import cookieParser from 'cookie-parser'
 
-import { authRoutes } from './api/auth/auth.routes.js'
-import { userRoutes } from './api/user/user.routes.js'
 import { taskRoutes } from './api/task/task.routes.js'
 import { setupSocketAPI } from './services/socket.service.js'
 import { dbService } from './services/db.service.js' 
@@ -34,8 +32,6 @@ if (process.env.NODE_ENV === 'production') {
 }
 app.all('*', setupAsyncLocalStorage)
 
-app.use('/api/auth', authRoutes)
-app.use('/api/user', userRoutes)
 app.use('/api/task', taskRoutes)
 
 setupSocketAPI(server)

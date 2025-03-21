@@ -88,13 +88,11 @@ export async function startTask(req, res) {
     try {
         const taskId = req.params.id
         const task = await taskService.getById(taskId)
-
         if (!task) {
             return res.status(404).send({ err: 'Task not found' })
         }
 
         const updatedTask = await taskService.performTask(task)
-        
         socketService.broadcast({ type: 'task-updated', data: updatedTask })
         
         res.json(updatedTask)
@@ -157,32 +155,5 @@ export async function getWorkerStatus(req, res) {
 	}
 }
 
-export async function addTaskMsg(req, res) {
-	const { loggedinUser } = req
 
-	try {
-		const taskId = req.params.id
-		const msg = {
-			txt: req.body.txt,
-			by: loggedinUser,
-		}
-		const savedMsg = await taskService.addTaskMsg(taskId, msg)
-		res.json(savedMsg)
-	} catch (err) {
-		logger.error('Failed to update task', err)
-		res.status(400).send({ err: 'Failed to update task' })
-	}
-}
 
-export async function removeTaskMsg(req, res) {
-	try {
-		const taskId = req.params.id
-		const { msgId } = req.params
-
-		const removedId = await taskService.removeTaskMsg(taskId, msgId)
-		res.send(removedId)
-	} catch (err) {
-		logger.error('Failed to remove task msg', err)
-		res.status(400).send({ err: 'Failed to remove task msg' })
-	}
-}
