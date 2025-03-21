@@ -3,7 +3,6 @@ import {Server} from 'socket.io'
 
 var gIo = null
 
-
 export function setupSocketAPI(http) {
     gIo = new Server(http, {
         cors: {
@@ -67,13 +66,11 @@ async function emitToUser({ type, data, userId }) {
 
 // If possible, send to all sockets BUT not the current socket 
 // Optionally, broadcast to a room / to all
-async function broadcast({ type, data, room = null, userId }) {
-    if (userId) {
-        userId = userId.toString()
-      }    
-      
+async function broadcast({ type, data, room = null, userId = null }) {
     logger.info(`Broadcasting event: ${type}`)
-    const excludedSocket = await _getUserSocket(userId)
+
+    const excludedSocket = userId ? await _getUserSocket(userId.toString()) : null
+
     if (room && excludedSocket) {
         logger.info(`Broadcast to room ${room} excluding user: ${userId}`)
         excludedSocket.broadcast.to(room).emit(type, data)

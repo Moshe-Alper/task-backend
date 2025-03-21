@@ -32,7 +32,7 @@ export async function getTaskById(req, res) {
 }
 
 export async function addTask(req, res) {
-	const { loggedinUser, body: task } = req
+	const { body: task } = req
 
 	try {
 		task.title = task.title || `task-${getRandomInt(9, 100)}`
@@ -44,8 +44,6 @@ export async function addTask(req, res) {
 		task.triesCount = task.triesCount || 0
 		task.doneAt = task.doneAt || null
 		task.errors = []
-
-		task.owner = loggedinUser
 		const addedTask = await taskService.add(task)
 		res.json(addedTask)
 	} catch (err) {
@@ -55,13 +53,6 @@ export async function addTask(req, res) {
 }
 
 export async function updateTask(req, res) {
-	const { loggedinUser, body: task } = req
-	const { _id: userId, isAdmin } = loggedinUser
-	if (!isAdmin && task.owner._id !== userId) {
-		res.status(403).send('Not your task...')
-		return
-	}
-
 	try {
 		const updatedTask = await taskService.update(task)
 		res.json(updatedTask)
@@ -80,6 +71,16 @@ export async function removeTask(req, res) {
 	} catch (err) {
 		logger.error('Failed to remove task', err)
 		res.status(400).send({ err: 'Failed to remove task' })
+	}
+}
+
+export async function clearAllTasks(req, res) {
+	try {
+		await taskService.clearAll() 
+		res.send({ message: 'All tasks removed' })
+	} catch (err) {
+		logger.error('Failed to remove all tasks', err)
+		res.status(500).send({ err: 'Failed to remove all tasks' })
 	}
 }
 

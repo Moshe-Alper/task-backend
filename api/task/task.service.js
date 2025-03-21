@@ -3,10 +3,10 @@ import { ObjectId } from 'mongodb'
 import { logger } from '../../services/logger.service.js'
 import { makeId } from '../../services/util.service.js'
 import { dbService } from '../../services/db.service.js'
-import { asyncLocalStorage } from '../../services/als.service.js'
 import { externalService } from '../../services/external.service.js'
 
 const PAGE_SIZE = 3
+const MAX_TRIES = 5
 let isWorkerOn = false
 
 export const taskService = {
@@ -21,6 +21,8 @@ export const taskService = {
 
 	setWorkerState,
 	isWorkerRunning,
+
+	clearAll,
 	
 	addTaskMsg,
 	removeTaskMsg,
@@ -71,14 +73,10 @@ async function getById(taskId) {
 }
 
 async function remove(taskId) {
-	const { loggedinUser } = asyncLocalStorage.getStore()
-	const { _id: ownerId, isAdmin } = loggedinUser
-
 	try {
 		const criteria = {
 			_id: ObjectId.createFromHexString(taskId),
 		}
-		if (!isAdmin) criteria['owner._id'] = ownerId
 
 		const collection = await dbService.getCollection('task')
 		const res = await collection.deleteOne(criteria)
@@ -163,21 +161,16 @@ async function getNextTask() {
 	try {
 		const collection = await dbService.getCollection('task')
 
-		// 2. Have fewer than 5 tries (to avoid stuck tasks)
 		const task = await collection.findOne(
 			{
-				status: { $in: ['new', 'failed'] },  // Finds task that are new or failed
-				triesCount: { $lt: 5 }  // Prevent tasks with too many attempts
+				status: { $in: ['new', 'failed'] }, 
+				triesCount: { $lt: MAX_TRIES }  
 			},
 			{
-				// Sort by:
-				// 1. Importance (highest first)
-				// 2. Tries count (lowest first) to prevent starvation
-				// 3. Creation time (oldest first) for fairness
 				sort: {
-					importance: -1,
-					triesCount: 1,
-					createdAt: 1
+					importance: -1, //(highest first)
+					triesCount: 1,//(lowest first) to prevent starvation
+					createdAt: 1 //Creation time (oldest first) for fairness
 				}
 			}
 		)
@@ -210,6 +203,16 @@ async function addTaskMsg(taskId, msg) {
 		return msg
 	} catch (err) {
 		logger.error(`cannot add task msg ${taskId}`, err)
+		throw err
+	}
+}
+
+async function clearAll() {
+	try {
+		const collection = await dbService.getCollection('task')
+		await collection.deleteMany({}) 
+	} catch (err) {
+		logger.error('Failed to clear tasks', err)
 		throw err
 	}
 }
