@@ -53,6 +53,9 @@ export async function addTask(req, res) {
 }
 
 export async function updateTask(req, res) {
+	const { body: task } = req
+
+
 	try {
 		const updatedTask = await taskService.update(task)
 		res.json(updatedTask)
