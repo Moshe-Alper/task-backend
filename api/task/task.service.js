@@ -27,39 +27,43 @@ export const taskService = {
 
 async function query(filterBy = { txt: '' }) {
 	try {
-	  const criteria = _buildCriteria(filterBy)
-	  let sort = _buildSort(filterBy)
-	  let options = {}
-	  
+		const criteria = _buildCriteria(filterBy)
+		let sort = _buildSort(filterBy)
+		let options = {}
 
-	  if (filterBy.txt) {
-		options.projection = { score: { $meta: "textScore" } }
-		
-		if (!filterBy.sortField) {
-		  sort = { score: { $meta: "textScore" } }
+
+		if (filterBy.txt) {
+			options.projection = { score: { $meta: "textScore" } }
+
+			if (!filterBy.sortField) {
+				sort = { score: { $meta: "textScore" } }
+			}
 		}
-	  }
-  
-	  const collection = await dbService.getCollection('task')
-	  var taskCursor = await collection.find(criteria, options).sort(sort)
-  
-	  if (filterBy.pageIdx !== undefined) {
-		taskCursor.skip(filterBy.pageIdx * PAGE_SIZE).limit(PAGE_SIZE)
-	  }
-  
-	  const tasks = taskCursor.toArray()
-	  return tasks
+
+		const collection = await dbService.getCollection('task')
+		var taskCursor = await collection.find(criteria, options).sort(sort)
+
+		if (filterBy.pageIdx !== undefined) {
+			taskCursor.skip(filterBy.pageIdx * PAGE_SIZE).limit(PAGE_SIZE)
+		}
+
+		const tasks = await taskCursor.toArray()
+		return tasks
 	} catch (err) {
-	  logger.error('cannot find tasks', err)
-	  throw err
+		logger.error('cannot find tasks', err)
+		throw err
 	}
-  }
+}
 async function getById(taskId) {
 	try {
 		const criteria = { _id: ObjectId.createFromHexString(taskId) }
 
 		const collection = await dbService.getCollection('task')
 		const task = await collection.findOne(criteria)
+
+		if (!task) {
+			throw new Error(`Task with id ${taskId} not found`) 
+		}
 
 		task.createdAt = task._id.getTimestamp()
 		return task
@@ -77,9 +81,9 @@ async function remove(taskId) {
 
 		const collection = await dbService.getCollection('task')
 		const res = await collection.deleteOne(criteria)
-		
-		if (res.deletedCount === 0) throw ('Not your task')
-			return taskId
+
+		if (res.deletedCount === 0) throw ('Task not found or not authorized to remove')
+		return taskId
 	} catch (err) {
 		logger.error(`cannot remove task ${taskId}`, err)
 		throw err
@@ -89,8 +93,8 @@ async function remove(taskId) {
 async function clearAll() {
 	try {
 		const collection = await dbService.getCollection('task')
-		await collection.deleteMany({}) 
-		return { acknowledged: true } 
+		await collection.deleteMany({})
+		return { acknowledged: true }
 	} catch (err) {
 		logger.error('Failed to clear tasks', err)
 		throw err
@@ -99,6 +103,9 @@ async function clearAll() {
 
 async function add(task) {
 	try {
+		if (!task.title) {
+			throw new Error('Task must have a title') 
+		}
 		const collection = await dbService.getCollection('task')
 		await collection.insertOne(task)
 
@@ -113,6 +120,7 @@ async function update(task) {
 	const taskToSave = {
 		title: task.title,
 		importance: task.importance,
+		description: task.description,
 		status: task.status,
 		doneAt: task.doneAt,
 		result: task.result,
@@ -120,19 +128,12 @@ async function update(task) {
 		triesCount: task.triesCount,
 		errors: task.errors || []
 	}
-	//remove later - frontend
 	try {
 		const taskId = typeof task._id === 'string'
 			? ObjectId.createFromHexString(task._id)
 			: task._id
 
 		const criteria = { _id: taskId }
-		// const taskToSave = { ...task }
-
-		// delete taskToSave._id
-		// delete taskToSave.owner
-		// delete taskToSave.createdAt
-		// return when moving to frontend
 
 		const collection = await dbService.getCollection('task')
 		await collection.updateOne(criteria, { $set: taskToSave })
@@ -152,6 +153,7 @@ async function performTask(task) {
 		task.result = result
 	} catch (error) {
 		task.status = 'failed'
+		task.errors = task.errors || []
 		task.errors.push(error.toString())
 	} finally {
 		task.lastTriedAt = Date.now()
@@ -168,8 +170,8 @@ async function getNextTask() {
 
 		const task = await collection.findOne(
 			{
-				status: { $in: ['new', 'failed'] }, 
-				triesCount: { $lt: MAX_TRIES }  
+				status: { $in: ['new', 'failed'] },
+				triesCount: { $lt: MAX_TRIES }
 			},
 			{
 				sort: {
@@ -188,9 +190,9 @@ async function getNextTask() {
 }
 
 function setWorkerState(runWorkerCallback) {
-    isWorkerOn = !isWorkerOn
-    if (isWorkerOn && runWorkerCallback) runWorkerCallback()
-    return isWorkerOn
+	isWorkerOn = !isWorkerOn
+	if (isWorkerOn && runWorkerCallback) runWorkerCallback()
+	return isWorkerOn
 }
 
 function isWorkerRunning() {
@@ -198,19 +200,23 @@ function isWorkerRunning() {
 }
 
 
-  function _buildCriteria(filterBy) {
+function _buildCriteria(filterBy) {
 	const criteria = {}
-  
+
 	if (filterBy.txt) {
-	  criteria.$text = { $search: filterBy.txt }
+		criteria.$text = { $search: filterBy.txt }
 	}
-  
+
 	if (filterBy.minImportance !== undefined) {
-	  criteria.importance = { $gte: filterBy.minImportance }
+		criteria.importance = { $gte: filterBy.minImportance }
 	}
-  
+
+	if (filterBy.status) {
+		criteria.status = filterBy.status
+	  }
+
 	return criteria
-  }
+}
 
 function _buildSort(filterBy) {
 	if (!filterBy.sortField) return {}
