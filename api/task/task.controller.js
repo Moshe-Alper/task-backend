@@ -95,10 +95,14 @@ export async function startTask(req, res) {
             return res.status(404).send({ err: 'Task not found' })
         }
 
-        const updatedTask = await taskService.performTask(task)
+        task.status = 'running'
+        const updatedTask = await taskService.update(task)
         socketService.broadcast({ type: 'task-updated', data: updatedTask })
         
-        res.json(updatedTask)
+        const completedTask = await taskService.performTask(task)
+        socketService.broadcast({ type: 'task-updated', data: completedTask })
+        
+        res.json(completedTask)
     } catch (err) {
         logger.error('Failed to start task', err)
         res.status(500).send({ err: `Failed to start task: ${err.message || err}` })
@@ -112,9 +116,12 @@ export async function runWorker() {
         const task = await taskService.getNextTask()
         if (task) {
             try {
-                const updatedTask = await taskService.performTask(task)
+
+                task.status = 'running'
+                const runningTask = await taskService.update(task)
+                socketService.broadcast({ type: 'task-updated', data: runningTask })
                 
-                // Emit socket event when task is updated by worker
+                const updatedTask = await taskService.performTask(task)
                 socketService.broadcast({ type: 'task-updated', data: updatedTask })
                 
             } catch (err) {

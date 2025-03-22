@@ -146,9 +146,6 @@ async function update(task) {
 
 async function performTask(task) {
 	try {
-		task.status = 'running'
-		await update(task)
-
 		const result = await externalService.execute(task)
 		task.status = 'done'
 		task.doneAt = Date.now()
