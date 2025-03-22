@@ -26,6 +26,8 @@ export const taskService = {
 }
 
 async function query(filterBy = { txt: '' }) {
+	console.log('Received filterBy in query:', filterBy);
+
 	try {
 		const criteria = _buildCriteria(filterBy)
 		let sort = _buildSort(filterBy)
@@ -62,7 +64,7 @@ async function getById(taskId) {
 		const task = await collection.findOne(criteria)
 
 		if (!task) {
-			throw new Error(`Task with id ${taskId} not found`) 
+			throw new Error(`Task with id ${taskId} not found`)
 		}
 
 		task.createdAt = task._id.getTimestamp()
@@ -104,7 +106,7 @@ async function clearAll() {
 async function add(task) {
 	try {
 		if (!task.title) {
-			throw new Error('Task must have a title') 
+			throw new Error('Task must have a title')
 		}
 		const collection = await dbService.getCollection('task')
 		await collection.insertOne(task)
@@ -202,7 +204,6 @@ function isWorkerRunning() {
 
 function _buildCriteria(filterBy) {
 	const criteria = {}
-
 	if (filterBy.txt) {
 		criteria.$text = { $search: filterBy.txt }
 	}
@@ -211,9 +212,9 @@ function _buildCriteria(filterBy) {
 		criteria.importance = { $gte: filterBy.minImportance }
 	}
 
-	if (filterBy.status) {
+	if (filterBy.status !== undefined && filterBy.status !== '') {
 		criteria.status = filterBy.status
-	  }
+	}
 
 	return criteria
 }

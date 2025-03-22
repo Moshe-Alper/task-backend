@@ -8,6 +8,7 @@ export async function getTasks(req, res) {
 		const filterBy = {
 			txt: req.query.txt || '',
 			importance: +req.query.minImportance || 0,
+			status: req.query.status || '',
 			sortField: req.query.sortField || '',
 			sortDir: req.query.sortDir || 1,
 			pageIdx: req.query.pageIdx,
