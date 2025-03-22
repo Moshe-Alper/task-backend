@@ -204,16 +204,22 @@ function isWorkerRunning() {
 
 function _buildCriteria(filterBy) {
 	const criteria = {}
+	const conditions = []
+
 	if (filterBy.txt) {
-		criteria.$text = { $search: filterBy.txt }
+		conditions.push({ $text: { $search: filterBy.txt } })
 	}
 
 	if (filterBy.minImportance !== undefined) {
-		criteria.importance = { $gte: filterBy.minImportance }
+		conditions.push({ importance: { $gte: filterBy.minImportance } })
 	}
 
 	if (filterBy.status !== undefined && filterBy.status !== '') {
-		criteria.status = filterBy.status
+		conditions.push({ status: filterBy.status })
+	}
+
+	if (conditions.length > 0) {
+		criteria.$and = conditions
 	}
 
 	return criteria
