@@ -77,11 +77,22 @@ async function remove(taskId) {
 
 		const collection = await dbService.getCollection('task')
 		const res = await collection.deleteOne(criteria)
-
+		
 		if (res.deletedCount === 0) throw ('Not your task')
-		return taskId
+			return taskId
 	} catch (err) {
 		logger.error(`cannot remove task ${taskId}`, err)
+		throw err
+	}
+}
+
+async function clearAll() {
+	try {
+		const collection = await dbService.getCollection('task')
+		await collection.deleteMany({}) 
+		return { acknowledged: true } 
+	} catch (err) {
+		logger.error('Failed to clear tasks', err)
 		throw err
 	}
 }
@@ -189,15 +200,6 @@ function isWorkerRunning() {
 	return isWorkerOn
 }
 
-async function clearAll() {
-	try {
-		const collection = await dbService.getCollection('task')
-		await collection.deleteMany({}) 
-	} catch (err) {
-		logger.error('Failed to clear tasks', err)
-		throw err
-	}
-}
 
   function _buildCriteria(filterBy) {
 	const criteria = {}
