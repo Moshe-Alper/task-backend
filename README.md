@@ -2,6 +2,8 @@
 
 A robust Node.js backend service for managing and processing tasks with a worker system.
 
+The service is works with the Mister Tasker - Task Management Application: https://github.com/Moshe-Alper/mister-tasker-frontend-react/tree/main
+
 - **Live Application**: 
 You can preview the live version at [Mister Tasker on Render](https://mister-tasker-3b3p.onrender.com/).
 
