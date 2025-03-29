@@ -2,6 +2,7 @@ import { logger } from '../../services/logger.service.js'
 import { getRandomInt } from '../../services/util.service.js'
 import { taskService } from './task.service.js'
 import { socketService } from '../../services/socket.service.js'
+import { dbService } from '../../services/db.service.js'
 
 export async function getTasks(req, res) {
 	try {
@@ -13,6 +14,11 @@ export async function getTasks(req, res) {
 			sortDir: req.query.sortDir || 1,
 			pageIdx: req.query.pageIdx,
 		}
+
+		if (filterBy.txt) {
+			await dbService.validateTextIndex()
+		  }
+	  
 		const tasks = await taskService.query(filterBy)
 		res.json(tasks)
 	} catch (err) {
@@ -164,6 +170,16 @@ export async function getWorkerStatus(req, res) {
 		logger.error('Failed to get worker status', err)
 		res.status(500).send({ err: 'Failed to get worker status' })
 	}
+}
+
+export async function checkIndexes(req, res) {
+    try {
+        const indexes = await dbService.checkIndexes()
+        res.json(indexes)
+    } catch (err) {
+        logger.error('Failed to check indexes', err)
+        res.status(500).send({ err: 'Failed to check indexes' })
+    }
 }
 
 

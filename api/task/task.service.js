@@ -26,9 +26,13 @@ export const taskService = {
 }
 
 async function query(filterBy = { txt: '' }) {
-	console.log('Received filterBy in query:', filterBy);
 
 	try {
+
+		if (filterBy.txt) {
+			await dbService.validateTextIndex()
+		}
+
 		const criteria = _buildCriteria(filterBy)
 		let sort = _buildSort(filterBy)
 		let options = {}
@@ -207,7 +211,13 @@ function _buildCriteria(filterBy) {
 	const conditions = []
 
 	if (filterBy.txt) {
-		conditions.push({ $text: { $search: filterBy.txt } })
+		conditions.push({
+			$text: {
+				$search: filterBy.txt,
+				$caseSensitive: false,
+				$diacriticSensitive: false
+			}
+		})
 	}
 
 	if (filterBy.minImportance !== undefined) {
